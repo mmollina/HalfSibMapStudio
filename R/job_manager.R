@@ -24,9 +24,10 @@ hsms_build_request <- function(proj, project_dir, stage, items, extra = list()) 
     order = list(tpt_filtered = art_path("tpt_filtered")),
     phase = list(tpt_filtered = art_path("tpt_filtered")),
     map = list(selection = art_path("selection")),
+    export = list(),
     stop("Unknown stage ", stage))
   items <- lapply(items, function(it) {
-    it$signature <- hsms_expected_signature(proj, stage, it$scope)
+    it$signature <- if (stage == "export") "export" else hsms_expected_signature(proj, stage, it$scope)
     if (is.na(it$signature)) stop("Settings for ", stage, " are incomplete.")
     if (stage %in% HSMS_GROUP_STAGES)
       it$spec <- proj[[paste0(stage, "_spec")]][[as.character(it$scope)]]
@@ -38,6 +39,7 @@ hsms_build_request <- function(proj, project_dir, stage, items, extra = list()) 
               else if (stage == "tpt_filtered") proj$settings$filter
               else if (stage == "grouping") proj$settings$group
               else if (stage == "order") extra$order_settings
+              else if (stage == "export") extra$export_options
               else NULL
   req <- list(job_id = job_id, stage = stage, items = items, inputs = inputs,
               settings = settings, seed = as.integer(proj$settings$app$seed),
@@ -46,6 +48,7 @@ hsms_build_request <- function(proj, project_dir, stage, items, extra = list()) 
               app_dir = normalizePath(hsms_app_dir(), winslash = "/"),
               job_dir = normalizePath(job_dir, winslash = "/"),
               project_id = proj$id,
+              project_dir = normalizePath(project_dir, winslash = "/"),
               halfsibmap_commit = proj$halfsibmap_commit,
               created = hsms_now())
   saveRDS(req, file.path(job_dir, "request.rds"))
@@ -145,6 +148,15 @@ hsms_accept_job <- function(proj, project_dir, job, manifest, accept_partial = T
       next
     }
     payload <- readRDS(payload_file)
+    if (req$stage == "export") {
+      proj$exports[[req$job_id]] <- list(id = req$job_id, kind = payload$kind, file = payload$file,
+                                         status = payload$status %||% NA, notes = as.list(payload$notes %||% character(0)),
+                                         created = hsms_now())
+      events[[length(events) + 1]] <- list(type = "export_built", kind = payload$kind, file = payload$file,
+                                           status = payload$status %||% NA)
+      accepted <- accepted + 1L
+      next
+    }
     if (req$stage == "import" && !isTRUE(payload$ok)) {
       proj$validation <- list(issues = payload$issues, families = payload$families,
                               needs_father_confirmation = isTRUE(payload$needs_father_confirmation),

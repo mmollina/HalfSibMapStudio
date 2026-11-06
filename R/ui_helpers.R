@@ -92,3 +92,11 @@ hsms_gg_theme <- function(base = 12) {
                    legend.position = "right")
 }
 
+
+# Update a select input, keeping the current value if still valid, otherwise
+# selecting the first choice (a selectize input never stays silently empty).
+hsms_update_select <- function(session, id, choices, current) {
+  vals <- unname(choices)
+  sel <- if (!is.null(current) && length(current) && current %in% vals) current else if (length(vals)) vals[1] else character(0)
+  shiny::updateSelectInput(session, id, choices = choices, selected = sel)
+}

@@ -21,7 +21,7 @@ hsms_plot_rf_hist <- function(dist_df) {
     ggplot2::geom_vline(xintercept = 0.5, linetype = "dashed", colour = "#c53030") +
     ggplot2::annotate("text", x = 0.5, y = Inf, label = "no linkage (r = 0.5)", vjust = 1.5, hjust = 1.05,
                       colour = "#c53030", size = 3.3) +
-    ggplot2::scale_x_continuous(limits = c(0, 0.51), breaks = seq(0, 0.5, 0.1)) +
+    ggplot2::scale_x_continuous(breaks = seq(0, 0.5, 0.1)) + ggplot2::coord_cartesian(xlim = c(0, 0.51)) +
     ggplot2::labs(title = "Pairwise maternal recombination fractions", x = "Recombination fraction (r)",
                   y = "Marker pairs",
                   caption = paste(c(sprintf("%d pair(s) with no estimate (NA) are not shown.", n_na), sub), collapse = " ")) +
@@ -71,7 +71,7 @@ hsms_plot_missingness <- function(values, what = "offspring") {
   df <- data.frame(x = values[is.finite(values)])
   ggplot2::ggplot(df, ggplot2::aes(x = x)) +
     ggplot2::geom_histogram(binwidth = 0.02, boundary = 0, fill = "#52606d", colour = "white", linewidth = 0.1) +
-    ggplot2::scale_x_continuous(limits = c(-0.01, 1.01)) +
+    ggplot2::coord_cartesian(xlim = c(0, 1)) +
     ggplot2::labs(title = sprintf("Missing-call proportion by %s", what), x = "Proportion of calls missing",
                   y = if (what == "offspring") "Offspring" else "Markers",
                   caption = sprintf("Denominator: %s.", if (what == "offspring") "markers in the file for this family" else "offspring in the family")) +
@@ -198,7 +198,7 @@ hsms_plot_posterior_heatmap <- function(long, title, fill_name, caption = NULL) 
                   caption = caption) +
     hsms_gg() +
     ggplot2::theme(axis.text.x = if (nm <= 60) ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5, size = 7) else ggplot2::element_blank(),
-                   axis.text.y = if (no <= 60) ggplot2::element_text(size = 7) else ggplot2::element_blank(),
+                   axis.text.y = if (no <= 40) ggplot2::element_text(size = 7) else ggplot2::element_blank(),
                    panel.grid = ggplot2::element_blank())
 }
 

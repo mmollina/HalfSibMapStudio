@@ -67,6 +67,30 @@ hsms_payload_brief <- function(stage, res) {
     list())
 }
 
+# Build an export inside the worker from the saved project state.
+hsms_worker_export <- function(req) {
+  o <- req$settings %||% list()
+  op <- hsms_open_project(req$project_dir, verify_checksums = FALSE)
+  proj <- op$proj
+  dir.create(file.path(req$project_dir, "exports"), showWarnings = FALSE)
+  stamp <- format(Sys.time(), "%Y%m%d-%H%M%S")
+  base <- paste(hsms_safe_filename(proj$name, 30), hsms_safe_filename(proj$family %||% "nofamily", 20), sep = "_")
+  if (identical(o$kind, "replay")) {
+    f <- file.path("exports", sprintf("replay_%s_%s.zip", base, stamp))
+    hsms_export_replay_bundle(proj, req$project_dir, file.path(req$project_dir, f))
+    return(list(kind = "replay", file = f, status = "replay"))
+  }
+  tmp <- file.path(req$project_dir, "exports", sprintf("results_%s_%s.tmp.zip", base, stamp))
+  r <- hsms_export_results(proj, req$project_dir, tmp,
+                           include_historical = isTRUE(o$include_historical),
+                           include_figures = !isFALSE(o$include_figures),
+                           include_posteriors = !isFALSE(o$include_posteriors),
+                           include_pairwise_matrices = isTRUE(o$include_pairwise_matrices))
+  f <- file.path("exports", sprintf("results_%s_%s_%s.zip", base, r$status, stamp))
+  file.rename(tmp, file.path(req$project_dir, f))
+  list(kind = "results", file = f, status = r$status, notes = r$notes)
+}
+
 hsms_worker_main <- function(request_path) {
   req <- readRDS(request_path)
   job_dir <- req$job_dir
@@ -104,6 +128,7 @@ hsms_worker_main <- function(request_path) {
         else if (identical(it$model, "population")) hsms_run_population(sel, ph, it$settings)
         else stop("Unknown model: ", it$model)
       },
+      export = function() hsms_worker_export(req),
       stop("Unknown stage: ", req$stage)))
     hsms_write_json(list(job_id = req$job_id, stage = req$stage, complete = FALSE,
                          items = out[seq_len(i)]), file.path(job_dir, "result.json"))

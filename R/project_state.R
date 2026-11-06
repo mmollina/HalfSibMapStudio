@@ -24,7 +24,7 @@ HSMS_GROUP_STAGES <- c("order", "phase", "map")
 HSMS_STAGE_LABELS <- c(import = "Import", selection = "Family and exclusions",
                        tpt_raw = "Two-point analysis", tpt_filtered = "Two-point filter",
                        grouping = "Linkage groups", order = "Marker order",
-                       phase = "Maternal phase", map = "Map fit")
+                       phase = "Maternal phase", map = "Map fit", export = "Export")
 HSMS_PARENT <- c(selection = "import", tpt_raw = "selection", tpt_filtered = "tpt_raw",
                  grouping = "tpt_filtered", order = "grouping", phase = "order", map = "phase")
 
@@ -49,6 +49,7 @@ hsms_new_project <- function(name, defaults = hsms_defaults(), id = hsms_id("p")
     current = list(order = list(), phase = list(), map = list()),
     last_outcome = list(),
     jobs = list(),
+    exports = list(),
     validation = NULL,
     demo = FALSE
   )

@@ -72,6 +72,19 @@ hsms_save_project <- function(proj, project_dir) {
   invisible(TRUE)
 }
 
+# JSON row-list (as written by jsonlite for a data frame) back to a data frame.
+hsms_rows_to_df <- function(x) {
+  if (is.null(x) || is.data.frame(x)) return(x)
+  if (!length(x)) return(data.frame())
+  cols <- unique(unlist(lapply(x, names)))
+  out <- lapply(cols, function(cn) {
+    v <- lapply(x, function(r) { z <- r[[cn]]; if (is.null(z)) NA else z })
+    unlist(v)
+  })
+  names(out) <- cols
+  as.data.frame(out, stringsAsFactors = FALSE, check.names = FALSE)
+}
+
 hsms_unlist_named <- function(x) {
   if (is.null(x) || !length(x)) return(character(0))
   v <- unlist(x); if (is.null(names(v))) names(v) <- names(x)
@@ -99,7 +112,13 @@ hsms_open_project <- function(project_dir, verify_checksums = TRUE) {
   proj$exclusions <- ex
   proj$exclusions_signature <- NULL
   proj$group_labels <- hsms_unlist_named(proj$group_labels)
-  for (nm in c("order_spec", "phase_spec", "map_spec", "artifacts", "last_outcome", "jobs"))
+  if (!is.null(proj$validation)) {
+    proj$validation$issues <- hsms_rows_to_df(proj$validation$issues)
+    if (!NROW(proj$validation$issues) || !"severity" %in% names(proj$validation$issues))
+      proj$validation$issues <- hsms_empty_issues()
+    proj$validation$families <- hsms_rows_to_df(proj$validation$families)
+  }
+  for (nm in c("order_spec", "phase_spec", "map_spec", "artifacts", "last_outcome", "jobs", "exports"))
     if (is.null(proj[[nm]])) proj[[nm]] <- list()
   for (s in HSMS_GROUP_STAGES) if (is.null(proj$current[[s]])) proj$current[[s]] <- list()
   # settings: unlist scalar lists
