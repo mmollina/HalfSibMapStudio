@@ -91,23 +91,34 @@ hsms_write_rds <- function(x, path) {
 }
 
 # Write a data frame as UTF-8 CSV with full numeric precision and explicit NA.
+# Text is written byte-for-byte as UTF-8 (no conversion through the session
+# locale), so Unicode identifiers survive in any locale. Character fields are
+# quoted; missing values are written as unquoted NA.
 hsms_write_csv <- function(df, path, na = "NA") {
   df <- as.data.frame(df, stringsAsFactors = FALSE, check.names = FALSE)
-  for (j in seq_along(df)) {
-    if (is.double(df[[j]])) df[[j]] <- hsms_format_full(df[[j]])
-  }
-  hsms_atomic_write(path, function(tmp) {
-    utils::write.csv(df, tmp, row.names = FALSE, na = na, fileEncoding = "UTF-8")
+  q <- function(v) paste0("\"", gsub("\"", "\"\"", enc2utf8(v), fixed = TRUE), "\"")
+  cols <- lapply(df, function(v) {
+    if (is.factor(v)) v <- as.character(v)
+    out <- if (is.double(v)) hsms_format_full(v)
+           else if (is.logical(v) || is.integer(v)) as.character(v)
+           else q(as.character(v))
+    out[is.na(v)] <- na
+    out
   })
+  lines <- c(paste(q(names(df)), collapse = ","),
+             if (nrow(df)) do.call(paste, c(unname(cols), sep = ",")))
+  hsms_atomic_write(path, function(tmp) writeLines(lines, tmp, useBytes = TRUE))
 }
 
-# Full-precision text for doubles (17 significant digits round-trip).
+# Full-precision text for doubles: 15 significant digits when that round-trips
+# exactly, otherwise 17.
 hsms_format_full <- function(x) {
-  out <- ifelse(is.na(x), NA_character_,
-                ifelse(is.infinite(x), ifelse(x > 0, "Inf", "-Inf"),
-                       formatC(x, digits = 17, format = "g")))
-  # drop trailing representation noise for integers stored as double
-  out <- sub("^\\s+", "", out)
+  out <- rep(NA_character_, length(x))
+  fin <- is.finite(x)
+  f15 <- formatC(x[fin], digits = 15, format = "g")
+  f17 <- formatC(x[fin], digits = 17, format = "g")
+  out[fin] <- trimws(ifelse(as.numeric(f15) == x[fin], f15, f17))
+  out[is.infinite(x)] <- ifelse(x[is.infinite(x)] > 0, "Inf", "-Inf")
   out
 }
 

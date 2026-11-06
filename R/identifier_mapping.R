@@ -69,8 +69,8 @@ hsms_write_normalized_inputs <- function(v, map, out_dir) {
   gm <- cbind(gm, as.data.frame(cm, stringsAsFactors = FALSE))
   ped_path <- file.path(out_dir, "pedigree_normalized.csv")
   geno_path <- file.path(out_dir, "genotypes_normalized.csv")
-  utils::write.csv(pn, ped_path, row.names = FALSE, na = "")
-  utils::write.csv(gm, geno_path, row.names = FALSE, na = "")
+  utils::write.csv(pn, ped_path, row.names = FALSE, na = "", fileEncoding = "UTF-8")
+  utils::write.csv(gm, geno_path, row.names = FALSE, na = "", fileEncoding = "UTF-8")
   list(pedigree = ped_path, genotypes = geno_path)
 }
 

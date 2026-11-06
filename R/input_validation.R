@@ -20,6 +20,17 @@ hsms_empty_issues <- function() {
              stringsAsFactors = FALSE)
 }
 
+# Remove a UTF-8 byte-order mark, byte-wise (safe in non-UTF-8 locales).
+hsms_strip_bom <- function(x) {
+  if (!length(x) || is.na(x)) return(x)
+  out <- sub("^\xef\xbb\xbf", "", x, useBytes = TRUE)
+  Encoding(out) <- "UTF-8"
+  out
+}
+
+# Files are read as UTF-8 text and marked UTF-8 WITHOUT conversion to the
+# session's native encoding, so Unicode identifiers survive even when R runs
+# in a C/POSIX locale.
 # Read a CSV as an all-character table. Returns list(ok, header, data, issues).
 hsms_read_raw_csv <- function(path, label) {
   issues <- hsms_empty_issues()
@@ -38,7 +49,7 @@ hsms_read_raw_csv <- function(path, label) {
     add("error", "file_unreadable", sprintf("%s file could not be read as text.", label))
     return(list(ok = FALSE, issues = issues))
   }
-  first <- sub("^﻿", "", first)
+  first <- hsms_strip_bom(first)
   if (!grepl(",", first, fixed = TRUE)) {
     delim <- if (grepl("\t", first)) "tab" else if (grepl(";", first)) "semicolon" else "unknown"
     add("error", "unsupported_delimiter",
@@ -46,12 +57,12 @@ hsms_read_raw_csv <- function(path, label) {
     return(list(ok = FALSE, issues = issues))
   }
   header <- scan(text = first, what = "", sep = ",", quote = "\"", quiet = TRUE,
-                 na.strings = character(0), strip.white = FALSE)
+                 na.strings = character(0), strip.white = FALSE, encoding = "UTF-8")
   dat <- tryCatch(
     utils::read.table(path, header = TRUE, sep = ",", quote = "\"", comment.char = "",
                       colClasses = "character", check.names = FALSE,
                       na.strings = character(0), strip.white = FALSE,
-                      fileEncoding = "UTF-8-BOM", stringsAsFactors = FALSE,
+                      encoding = "UTF-8", stringsAsFactors = FALSE,
                       blank.lines.skip = TRUE, fill = FALSE),
     error = function(e) e)
   if (inherits(dat, "error")) {
@@ -59,6 +70,7 @@ hsms_read_raw_csv <- function(path, label) {
     return(list(ok = FALSE, issues = issues))
   }
   if (length(header) != ncol(dat)) header <- names(dat)
+  header[1] <- hsms_strip_bom(header[1])
   dup <- unique(header[duplicated(header)])
   if (length(dup))
     add("error", "duplicate_header", sprintf("%s file has duplicated column names.", label),
@@ -189,7 +201,7 @@ hsms_validate_inputs <- function(ped_path, geno_path, missing_tokens = HSMS_MISS
   calls <- NULL
   if (length(sample_cols) && nrow(geno)) {
     G <- as.matrix(geno[, sample_cols, drop = FALSE])
-    valid <- G %in% c("0", "1", "2") | G %in% missing_tokens
+    valid <- matrix(G %in% c("0", "1", "2") | G %in% missing_tokens, nrow(G), ncol(G))
     if (!all(valid)) {
       bad <- which(!valid, arr.ind = TRUE)
       tok <- G[!valid]

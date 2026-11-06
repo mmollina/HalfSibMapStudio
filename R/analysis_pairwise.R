@@ -108,6 +108,12 @@ hsms_pair_table <- function(tpt, markers, map) {
 
 hsms_run_filter <- function(tpt_raw, settings) {
   args <- hsms_args_filter(settings)
+  rc <- hsms_filter_row_counts(tpt_raw, settings)
+  if (!length(rc) || max(rc) == 0)
+    stop(sprintf(paste("No marker pair passes the screen (linkage LOD >= %s and r <= %s). In this case",
+                       "tpt_filter() keeps every marker, because all markers tie at zero surviving pairs;",
+                       "the app does not record that as a filtered result. Lower the LOD cutoff or raise the maximum r."),
+                 format(settings$lod), format(settings$thresh_rf)), call. = FALSE)
   res <- tryCatch(hsms_capture(do.call(HalfSibMap::tpt_filter, c(list(x = tpt_raw), args))),
                   error = function(e) e)
   if (inherits(res, "error")) {

@@ -326,7 +326,7 @@ hsms_import_bundle <- function(zip_path, base_dir, max_bytes = 2e9) {
   }
   pj <- jsonlite::read_json(file.path(stage, "project.json"), simplifyVector = FALSE)
   dest <- file.path(base_dir, paste0(hsms_safe_filename(pj$name %||% "imported", 40), "_import_",
-                                     format(Sys.time(), "%Y%m%d%H%M%S")))
+                                     format(Sys.time(), "%Y%m%d%H%M%S"), "_", basename(tempfile(""))))
   if (!file.rename(stage, dest)) stop("Could not move the imported project into place.")
   ok <- TRUE
   hsms_project_dirs(dest)
