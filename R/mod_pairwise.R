@@ -6,7 +6,7 @@ mod_pairwise_ui <- function(id) {
     hsms_stage_header(4, "Two-point analysis", "Estimate maternal recombination fractions and LOD scores for every pair of informative markers, then filter the two-point table."),
     shiny::uiOutput(ns("prereq")),
     bslib::layout_columns(
-      col_widths = c(4, 8),
+      col_widths = bslib::breakpoints(sm = 12, lg = c(4, 8)),
       bslib::card(
         bslib::card_header(shiny::div(class = "d-flex justify-content-between align-items-center",
                                       "Run two-point analysis", shiny::uiOutput(ns("tpt_badges"), inline = TRUE))),
@@ -32,7 +32,7 @@ mod_pairwise_ui <- function(id) {
                          DT::DTOutput(ns("pair_table")),
                          shiny::p(class = "small text-muted", "Pairs without an estimate show NA; they are not evidence of linkage.")))),
     bslib::layout_columns(
-      col_widths = c(4, 8),
+      col_widths = bslib::breakpoints(sm = 12, lg = c(4, 8)),
       bslib::card(
         bslib::card_header(shiny::div(class = "d-flex justify-content-between align-items-center",
                                       "Filter", shiny::uiOutput(ns("flt_badges"), inline = TRUE))),

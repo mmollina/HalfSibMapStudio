@@ -17,7 +17,7 @@ mod_data_ui <- function(id) {
     hsms_stage_header(2, "Data", "Upload the pedigree and genotype CSV files, validate them, and choose one maternal family to analyse."),
     shiny::uiOutput(ns("prereq")),
     bslib::layout_columns(
-      col_widths = c(5, 7),
+      col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
       bslib::card(
         bslib::card_header("Input files"),
         shiny::uiOutput(ns("current_inputs")),

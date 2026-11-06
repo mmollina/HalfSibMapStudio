@@ -7,7 +7,7 @@ mod_phase_map_ui <- function(id) {
     shiny::uiOutput(ns("prereq")),
     bslib::card(bslib::card_header("Groups: phase and model route"), shiny::uiOutput(ns("routes"))),
     bslib::layout_columns(
-      col_widths = c(4, 8),
+      col_widths = bslib::breakpoints(sm = 12, lg = c(4, 8)),
       bslib::card(
         bslib::card_header(shiny::div(class = "d-flex justify-content-between align-items-center",
                                       "Assemble phase", shiny::uiOutput(ns("ph_badges"), inline = TRUE))),
@@ -23,7 +23,7 @@ mod_phase_map_ui <- function(id) {
           bslib::nav_panel("Intervals", DT::DTOutput(ns("ph_intervals"))),
           bslib::nav_panel("Markers", DT::DTOutput(ns("ph_markers")))))),
     bslib::layout_columns(
-      col_widths = c(4, 8),
+      col_widths = bslib::breakpoints(sm = 12, lg = c(4, 8)),
       bslib::card(
         bslib::card_header(shiny::div(class = "d-flex justify-content-between align-items-center",
                                       "Fit maps", shiny::uiOutput(ns("map_badges"), inline = TRUE))),

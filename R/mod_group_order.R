@@ -6,7 +6,7 @@ mod_group_order_ui <- function(id) {
     hsms_stage_header(5, "Groups and order", "Cluster the retained markers into linkage groups, then order markers within groups by MDS or from a supplied order."),
     shiny::uiOutput(ns("prereq")),
     bslib::layout_columns(
-      col_widths = c(4, 8),
+      col_widths = bslib::breakpoints(sm = 12, lg = c(4, 8)),
       bslib::card(
         bslib::card_header(shiny::div(class = "d-flex justify-content-between align-items-center",
                                       "Build groups", shiny::uiOutput(ns("grp_badges"), inline = TRUE))),
@@ -26,7 +26,7 @@ mod_group_order_ui <- function(id) {
         bslib::nav_panel("Assignments", DT::DTOutput(ns("assign_table")), hsms_download_link(ns("dl_assign"))),
         bslib::nav_panel("Supplied annotations", shiny::uiOutput(ns("chrom_comp"))))),
     bslib::layout_columns(
-      col_widths = c(4, 8),
+      col_widths = bslib::breakpoints(sm = 12, lg = c(4, 8)),
       bslib::card(
         bslib::card_header(shiny::div(class = "d-flex justify-content-between align-items-center",
                                       "Order markers", shiny::uiOutput(ns("ord_badges"), inline = TRUE))),

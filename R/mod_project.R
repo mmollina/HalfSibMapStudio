@@ -21,7 +21,7 @@ mod_project_server <- function(id, ctx) {
     start_ui <- function() {
       pl <- shiny::isolate(projects())
       bslib::layout_columns(
-        col_widths = c(6, 6, 6, 6),
+        col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6, 6, 6)),
         bslib::card(bslib::card_header("Try the simulated demo"),
                     shiny::p("The HalfSibMap package ships a small ", shiny::strong("simulated"), " dataset: 24 markers on one linkage group and three mothers (MOM1, MOM2, MOM3) with 60, 50 and 45 offspring. The demo analyses family MOM1 only."),
                     shiny::div(class = "d-flex gap-2 flex-wrap",
@@ -45,7 +45,7 @@ mod_project_server <- function(id, ctx) {
     project_ui <- function(p) {
       ev <- hsms_read_events(ctx$dir(), 300)
       bslib::layout_columns(
-        col_widths = c(5, 7),
+        col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
         bslib::card(bslib::card_header("Project"),
                     hsms_kv(Name = p$name, Family = p$family %||% "not selected",
                             Created = substr(p$created, 1, 19), Folder = shiny::tags$code(ctx$dir()),

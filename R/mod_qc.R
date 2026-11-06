@@ -7,7 +7,7 @@ mod_qc_ui <- function(id) {
     shiny::uiOutput(ns("prereq")),
     shiny::uiOutput(ns("overview")),
     bslib::layout_columns(
-      col_widths = c(6, 6),
+      col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
       bslib::card(bslib::card_header("Offspring missingness"), shiny::plotOutput(ns("off_plot"), height = "260px")),
       bslib::card(bslib::card_header("Marker missingness"), shiny::plotOutput(ns("mk_plot"), height = "260px"))),
     bslib::navset_card_tab(
@@ -19,7 +19,7 @@ mod_qc_ui <- function(id) {
       bslib::card_header(shiny::div(class = "d-flex justify-content-between align-items-center", "Exclusions",
                                     shiny::uiOutput(ns("draft_badge"), inline = TRUE))),
       bslib::layout_columns(
-        col_widths = c(4, 4, 4),
+        col_widths = bslib::breakpoints(sm = 12, lg = c(4, 4, 4)),
         shiny::div(shiny::tags$h6("Missingness filter"),
                    hsms_num(ns("max_off"), "Exclude offspring with missing proportion above", 1, min = 0, max = 1, step = 0.05),
                    hsms_num(ns("max_mk"), "Exclude markers with missing proportion above", 1, min = 0, max = 1, step = 0.05),
@@ -63,7 +63,7 @@ mod_qc_server <- function(id, ctx) {
       s <- sel(); if (is.null(s)) return(NULL)
       o <- s$qc$overall
       bslib::layout_columns(
-        col_widths = c(3, 3, 3, 3),
+        col_widths = bslib::breakpoints(sm = 12, lg = c(3, 3, 3, 3)),
         bslib::value_box("Family / mother", paste(o$family, "/", o$mother), theme = "light"),
         bslib::value_box("Offspring retained", sprintf("%d of %d", o$retained_offspring, o$raw_offspring), theme = "light"),
         bslib::value_box("Informative markers", sprintf("%d of %d", o$retained_markers, o$raw_markers),

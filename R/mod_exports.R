@@ -7,7 +7,7 @@ mod_exports_ui <- function(id) {
     shiny::uiOutput(ns("prereq")),
     bslib::card(bslib::card_header("What would be exported"), shiny::uiOutput(ns("status_table"))),
     bslib::layout_columns(
-      col_widths = c(4, 4, 4),
+      col_widths = bslib::breakpoints(sm = 12, lg = c(4, 4, 4)),
       bslib::card(
         bslib::card_header("Results package (ZIP)"),
         shiny::p(class = "small", "Tables (original IDs, full precision, explicit NA), unmodified HalfSibMap objects (RDS), figures (PNG 300 dpi and PDF), applied settings, versions, input checksums and job logs. Built in the background."),
@@ -28,7 +28,7 @@ mod_exports_ui <- function(id) {
         shiny::checkboxInput(ns("b_artifacts"), "Include analysis results (otherwise they must be recomputed)", TRUE),
         shiny::downloadButton(ns("dl_bundle"), "Download project bundle", class = "btn-outline-primary"))),
     bslib::layout_columns(
-      col_widths = c(6, 6),
+      col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
       bslib::card(bslib::card_header("Built packages"), shiny::uiOutput(ns("built"))),
       bslib::card(bslib::card_header("Individual tables"),
                   shiny::tags$ul(
