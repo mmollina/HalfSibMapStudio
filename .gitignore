@@ -1,0 +1,23 @@
+# renv (lockfile and activate.R are committed)
+renv/library/
+renv/local/
+renv/cellar/
+renv/lock/
+renv/python/
+renv/sandbox/
+renv/staging/
+# R / RStudio
+.Rhistory
+.RData
+.Rproj.user/
+# user data, projects, logs, outputs
+projects/
+*.hsmap.zip
+outputs/
+tests/testthat/_snaps/**/*.new.*
+tests/testthat/_problems/
+dev/
+*.log
+# OS
+.DS_Store
+Thumbs.db

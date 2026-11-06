@@ -1,0 +1,34 @@
+Package: HalfSibMapStudio
+Type: Project
+Title: Graphical Workbench for Maternal Linkage Mapping with HalfSibMap
+Version: 0.1.0
+Authors@R: person("Marcelo", "Mollinari", role = c("aut", "cre"))
+Description: A local Shiny application that drives the HalfSibMap R package
+    through a staged, reproducible maternal linkage-mapping workflow for one
+    open-pollinated (half-sib) family at a time.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends:
+    R (>= 4.2.0)
+Imports:
+    HalfSibMap,
+    shiny,
+    bslib,
+    callr,
+    processx,
+    ggplot2,
+    DT,
+    jsonlite,
+    digest,
+    zip,
+    htmltools
+Suggests:
+    testthat (>= 3.0.0),
+    shinytest2,
+    chromote,
+    remotes,
+    renv
+Remotes:
+    git::https://github.com/mmollina/HalfSibMap.git@b3e8b5fdd429c67a3feb7cd6c380dde746377f43
+Config/HalfSibMap/commit: b3e8b5fdd429c67a3feb7cd6c380dde746377f43
+Config/testthat/edition: 3
