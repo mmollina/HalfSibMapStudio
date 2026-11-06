@@ -58,6 +58,9 @@ local({
   options(repos = c(CRAN = repo),
           Ncpus = max(1L, min(4L, parallel::detectCores(logical = FALSE) %||% 1L, na.rm = TRUE)))
   msg("Package repository: ", repo)
+  # renv::restore() otherwise uses the repository recorded in renv.lock.
+  if (nzchar(Sys.getenv("HSMS_CRAN_REPO"))) Sys.setenv(RENV_CONFIG_REPOS_OVERRIDE = repo)
+  Sys.setenv(MAKEFLAGS = Sys.getenv("MAKEFLAGS", paste0("-j", getOption("Ncpus", 1L))))
 
   # ---- renv itself ----------------------------------------------------------
   if (!requireNamespace("renv", quietly = TRUE)) {
