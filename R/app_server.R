@@ -300,7 +300,7 @@ hsms_server <- function(input, output, session) {
       title = "Project settings", easyClose = TRUE, size = "m",
       if (is.null(p)) hsms_notice("Open a project to change its settings.") else shiny::tagList(
         hsms_num("set_threads", "Worker threads", p$settings$app$threads,
-                 sprintf("Threads used by RcppParallel inside the background worker (two-point analysis). Allowed: 1 to %d on this machine. Thread count does not change results.", allow),
+                 sprintf("Threads used by RcppParallel inside the background worker (two-point analysis and population-model map fits). Also editable on the Two-point page. Allowed: 1 to %d on this machine. Thread count changes neither results nor memory use.", allow),
                  min = 1, max = allow, step = 1),
         hsms_num("set_seed", "Random seed", p$settings$app$seed,
                  "Recorded with every job and set before each stochastic step. MDS ordering records the seed in its order specification.",

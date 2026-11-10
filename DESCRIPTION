@@ -16,6 +16,7 @@ Imports:
     bslib,
     callr,
     processx,
+    ps,
     ggplot2,
     DT,
     jsonlite,

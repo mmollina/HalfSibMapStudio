@@ -1,19 +1,61 @@
 # Two-point analysis and filtering adapters around HalfSibMap::pairwise_rf()
 # and HalfSibMap::tpt_filter().
 
-# Conservative memory estimate for pairwise_rf() output, in bytes.
-# Verified against the real return structure (docs/UPSTREAM_API_CONTRACT.md):
-# for one family the fit holds 7 T x T matrices (r, lod_r, lod_ph, logLik,
-# no_linkage, mom_phase_list[[1]], lod_ph_list[[1]]), each stored as 8-byte
-# doubles. Diagnostics add further T x T matrices. The worker then serialises
-# the result to disk and the app reads it back, so up to ~3 copies can be live.
-hsms_pairwise_memory_estimate <- function(n_markers, return_diagnostics = FALSE) {
-  T <- as.numeric(n_markers)
-  n_mats <- 7 + if (isTRUE(return_diagnostics)) 8 else 0
-  one_copy <- n_mats * 8 * T^2
+# Memory model for the two-point stage, calibrated from MEASURED peak resident
+# memory (VmHWM) of fresh worker-like R processes (R 4.3.3, Linux x86_64,
+# 2026-11-09; see docs/VALIDATION.md). Memory grows with T^2 (T = markers);
+# offspring count and thread count had no material effect. Coefficients are
+# bytes per T^2 and are rounded up, so the figures are slightly pessimistic:
+# against the app's real job workers (peak read from /proc while they ran) the
+# estimates were 6-22% above the measured peak for T = 500 to 3000, for both
+# the two-point and the filter step, with and without diagnostics
+# (tests/testthat/test-resources.R repeats this check on Linux).
+#   result object : 5 double + 2 integer T x T matrices = 48 bytes/T^2 (101 with diagnostics)
+#   two-point worker peak above R start-up : measured 75-81 (136 with diagnostics)
+#   filter worker peak (reloads and subsets the full result) : measured 109-132
+#   app session displaying the result : measured 83-103
+#   result file (compressed RDS) : measured 37
+HSMS_MEM_MODEL <- list(
+  r_startup_mib = 380,          # an R worker with HalfSibMap and dependencies loaded (measured 375)
+  fixed_mib = 20,               # small-T overhead
+  object = c(plain = 48, diag = 101),
+  twopoint = c(plain = 82, diag = 140),
+  filter = c(plain = 135, diag = 190),
+  app = c(plain = 105, diag = 160),
+  file = c(plain = 40, diag = 85))
+
+hsms_available_memory <- function() {
+  m <- tryCatch(ps::ps_system_memory(), error = function(e) NULL)
+  if (is.null(m) || is.null(m$avail) || !is.finite(m$avail)) return(NA_real_)
+  as.numeric(m$avail)
+}
+
+hsms_pairwise_memory_estimate <- function(n_markers, return_diagnostics = FALSE, n_offspring = 0) {
+  T <- as.numeric(n_markers); mm <- HSMS_MEM_MODEL
+  k <- if (isTRUE(return_diagnostics)) "diag" else "plain"
+  fixed <- mm$fixed_mib * 2^20 + 16 * as.numeric(n_offspring) * T
+  startup <- mm$r_startup_mib * 2^20
   list(n_markers = n_markers, n_pairs = T * (T - 1) / 2,
-       output_bytes = one_copy, peak_bytes_estimate = 3 * one_copy,
-       note = "Estimate from the documented return structure; not a measured peak.")
+       object_bytes = mm$object[[k]] * T^2,
+       worker_peak_bytes = startup + fixed + mm$twopoint[[k]] * T^2,
+       filter_peak_bytes = startup + fixed + mm$filter[[k]] * T^2,
+       app_bytes = fixed + mm$app[[k]] * T^2,
+       file_bytes = mm$file[[k]] * T^2,
+       available_bytes = hsms_available_memory(),
+       # kept for callers that use the older field names
+       output_bytes = mm$object[[k]] * T^2,
+       peak_bytes_estimate = startup + fixed + mm$filter[[k]] * T^2,
+       note = paste("Calibrated from measured peak memory (R 4.3, Linux); slightly pessimistic.",
+                    "Thread count does not change memory use."))
+}
+
+# Memory warning: the larger worker (filter step) plus what the app session
+# holds must fit comfortably in available memory and within the configured cap.
+hsms_pairwise_memory_warning <- function(est, cap_gb = Inf) {
+  need <- max(est$worker_peak_bytes, est$filter_peak_bytes) + est$app_bytes
+  over_cap <- is.finite(cap_gb) && need > cap_gb * 1024^3
+  over_avail <- is.finite(est$available_bytes) && need > 0.8 * est$available_bytes
+  list(warn = over_cap || over_avail, need_bytes = need, over_cap = over_cap, over_avail = over_avail)
 }
 
 hsms_run_pairwise <- function(sel, settings, threads) {

@@ -130,7 +130,8 @@ mod_phase_map_server <- function(id, ctx) {
     output$model_help <- shiny::renderUI({
       if (identical(input$model, "source_aware"))
         shiny::p(class = "small text-muted", "Pairs the transmitted maternal homolog with a paternal source state, so paternal haplotype-sharing tracts are modelled separately from maternal recombination. Alpha and beta are transition probabilities per marker step (entering / leaving the sharing mode); they are not physical rates or numbers of fathers.")
-      else shiny::p(class = "small text-muted", "Fits the identifiable gametic paternal model within each resolved phase block (hmm_map_blocks). Unresolved intervals split the order into blocks; no distance is estimated across them.")
+      else shiny::p(class = "small text-muted", "Fits the identifiable gametic paternal model within each resolved phase block (hmm_map_blocks). Unresolved intervals split the order into blocks; no distance is estimated across them.",
+                    sprintf("This fit uses %d worker thread(s) (set on the Two-point page or in Settings).", ctx$proj()$settings$app$threads %||% 1L))
     })
     eligible_map <- function(g) {
       p <- ctx$proj(); if (!hsms_is_current(p, "phase", g)) return(FALSE)

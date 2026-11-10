@@ -36,8 +36,24 @@ suspected selfs automatically; remove confirmed selfs here.
 
 ## 4. Two-point analysis
 
-The pre-run panel shows retained counts, the number of pairs and a memory
-*estimate*. Large analyses require an explicit confirmation; markers are never
+The run card shows retained counts and the number of pairs, a **Worker
+threads** box, and a **memory estimate**.
+
+- *Worker threads* (also in Settings; one project-wide value) sets how many CPU
+  threads the background worker uses. It speeds up the two-point analysis and
+  the population-model map fit; it changes neither results nor memory. The
+  source-aware model is single-threaded. On the test machine, 3,000 markers ×
+  300 offspring took 9.4 s with 1 thread and 5.3 s with 2.
+- *Memory estimate* lists the peak memory of the two-point worker, of the
+  filter step (which needs more, because it reloads the full result), what the
+  app itself holds while showing the result, the saved file size, the total
+  needed at most, and the memory available on this computer right now. The
+  figures are calibrated from measured runs and are slightly pessimistic.
+  Memory grows with the square of the number of markers.
+
+If the analysis would need more than 80% of the available memory (or exceeds
+the `memory_warning_gb` / `pairwise_marker_warning` limits in
+`config/defaults.json`), you must confirm before it runs. Markers are never
 subsampled. Results: RF and LOD distributions, a matrix view (aggregated for
 large marker sets, labelled as such), and pair inspection.
 

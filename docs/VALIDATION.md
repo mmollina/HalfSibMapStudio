@@ -32,8 +32,8 @@ and Windows) has not run yet.
 `Rscript scripts/test.R --browser` (with `CHROMOTE_CHROME=/opt/pw-browsers/chromium`):
 
 ```
-[ FAIL 0 | WARN 0 | SKIP 0 | PASS 360 ]
-Tests: 11 files, 360 expectations, 0 failed, 0 skipped, 0 errors   (158 s)
+[ FAIL 0 | WARN 0 | SKIP 0 | PASS 385 ]
+Tests: 12 files, 385 expectations, 0 failed, 0 skipped, 0 errors   (rerun 2026-11-09 after adding thread selection and the calibrated memory estimate)
 ```
 
 | File | What it checks |
@@ -88,9 +88,31 @@ process; the HalfSibMap calls themselves take well under a second on the demo.
 | 1,000 markers × 200 offspring | 1.47 s | 0.74 s | 47 MB |
 | 3,000 markers × 300 offspring | 9.41 s | 5.25 s | 416 MB |
 
-The app's pre-run memory figure (7 T×T matrices × 8 bytes, ×3 for copies) is
-an estimate: for 3,000 markers it gives 504 MB output and 1.5 GB peak, versus
-the measured 416 MB object (some matrices are integer).
+### Memory (measured, 2026-11-09)
+
+Peak resident memory (VmHWM) of the app's real job workers, read from `/proc`
+by the parent while each worker ran, compared with the app's estimate:
+
+| Step | Markers × offspring | Measured peak | Estimate | Estimate / measured |
+| --- | --- | --- | --- | --- |
+| Two-point | 500 × 200 | 377 MB | 421 MB | 1.12 |
+| Two-point | 1,000 × 200 | 437 MB | 481 MB | 1.10 |
+| Two-point | 1,500 × 200 | 508 MB | 581 MB | 1.14 |
+| Two-point | 2,000 × 300 | 637 MB | 722 MB | 1.13 |
+| Two-point | 3,000 × 300 | 991 MB | 1,118 MB | 1.13 |
+| Filter | 1,000 × 200 | 476 MB | 532 MB | 1.12 |
+| Filter | 3,000 × 300 | 1,285 MB | 1,572 MB | 1.22 |
+| Two-point, diagnostics on | 3,000 × 300 | 1,523 MB | 1,615 MB | 1.06 |
+| Filter, diagnostics on | 3,000 × 300 | 1,869 MB | 2,045 MB | 1.09 |
+
+(MB here = 2^20 bytes.) An R worker with HalfSibMap loaded starts at 375 MB.
+Above that, memory grows with T² (about 75–90 bytes per T² for the two-point
+step and 105–130 for the filter step); 1, 2 and 4 threads gave identical
+peaks, and tripling the offspring count changed the peak by about 5%. The app
+session needs about 83–103 bytes per T² to display the result, and the saved
+result file is about 37 bytes per T². The previous formula (7 matrices × 8
+bytes × 3 copies) gave 504 MB output / 1.5 GB peak for 3,000 markers and did
+not separate the filter step.
 
 ## Known limitations
 

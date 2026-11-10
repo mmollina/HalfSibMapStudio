@@ -58,3 +58,6 @@ body { background: #f4f6f8; }
 .bslib-value-box .value-box-title { font-size: 0.8rem; }
 table.dataTable { font-size: 0.83rem; }
 .shiny-notification { font-size: 0.88rem; }
+.hsms-mem { border-top: 1px solid var(--hsms-border); border-bottom: 1px solid var(--hsms-border); padding: 0.5rem 0 0.1rem 0; margin-bottom: 0.7rem; }
+.hsms-mem h6 { font-size: 0.85rem; font-weight: 700; color: #334e68; margin-bottom: 0.35rem; }
+.hsms-mem dd { white-space: nowrap; }

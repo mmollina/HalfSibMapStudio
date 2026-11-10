@@ -11,6 +11,8 @@ mod_pairwise_ui <- function(id) {
         bslib::card_header(shiny::div(class = "d-flex justify-content-between align-items-center",
                                       "Run two-point analysis", shiny::uiOutput(ns("tpt_badges"), inline = TRUE))),
         shiny::uiOutput(ns("prerun")),
+        shiny::uiOutput(ns("threads_ui")),
+        shiny::uiOutput(ns("memory")),
         shiny::uiOutput(ns("tpt_form")),
         shiny::uiOutput(ns("resource_confirm")),
         shiny::div(class = "d-flex gap-2 flex-wrap",
@@ -65,34 +67,91 @@ mod_pairwise_server <- function(id, ctx) {
       hsms_settings_form(ns, "filter", p$settings$filter) })
     tpt_draft <- shiny::reactive(hsms_read_form(input, "pairwise"))
     flt_draft <- shiny::reactive(hsms_read_form(input, "filter"))
+    # ---- worker threads (project-wide setting, also in the Settings dialog) ----
+    allowance <- hsms_cpu_allowance(ctx$defaults$app$max_threads)
+    output$threads_ui <- shiny::renderUI({
+      ctx$proj_id(); p <- shiny::isolate(ctx$proj()); shiny::req(p)
+      cores <- suppressWarnings(parallel::detectCores(logical = TRUE))
+      shiny::tagList(
+        hsms_num(ns("threads"), "Worker threads", p$settings$app$threads,
+                 paste("Number of CPU threads the background worker may use. Threads speed up the two-point analysis",
+                       "and the population-model map fit (both use RcppParallel); the source-aware model is",
+                       "single-threaded R code. Threads change neither the results nor the memory needed."),
+                 min = 1, max = allowance, step = 1),
+        shiny::p(class = "small text-muted", sprintf("This computer: %s logical cores detected; up to %d can be used (one is left for the app).",
+                                                     if (is.na(cores)) "an unknown number of" else cores, allowance)))
+    })
+    threads_draft <- shiny::reactive({
+      v <- suppressWarnings(as.integer(input$threads))
+      if (length(v) != 1L || is.na(v)) NA_integer_ else v
+    })
+    threads_ok <- shiny::reactive({ v <- threads_draft(); !is.na(v) && v >= 1L && v <= allowance })
+    applied_threads <- shiny::reactive({ p <- ctx$proj(); if (is.null(p)) NA_integer_ else as.integer(p$settings$app$threads) })
+    shiny::observeEvent(applied_threads(), {   # keep in sync when changed from the Settings dialog
+      if (!is.na(applied_threads()) && !identical(applied_threads(), threads_draft()))
+        shiny::updateNumericInput(session, "threads", value = applied_threads())
+    }, ignoreInit = TRUE)
+
     output$tpt_badges <- shiny::renderUI({ p <- ctx$proj(); shiny::req(p)
-      shiny::tagList(hsms_draft_badge(hsms_form_differs(tpt_draft(), p$settings$pairwise, "pairwise")),
+      thr_diff <- !is.na(threads_draft()) && !identical(threads_draft(), as.integer(p$settings$app$threads))
+      shiny::tagList(hsms_draft_badge(thr_diff || hsms_form_differs(tpt_draft(), p$settings$pairwise, "pairwise")),
                      hsms_status_badge(if (jv_stage("tpt_raw")) "running" else hsms_stage_status(p, "tpt_raw"))) })
     output$flt_badges <- shiny::renderUI({ p <- ctx$proj(); shiny::req(p)
       shiny::tagList(hsms_draft_badge(hsms_form_differs(flt_draft(), p$settings$filter, "filter")),
                      hsms_status_badge(if (jv_stage("tpt_filtered")) "running" else hsms_stage_status(p, "tpt_filtered"))) })
-    shiny::observeEvent(input$discard_tpt, hsms_update_form(session, "pairwise", ctx$proj()$settings$pairwise))
+    shiny::observeEvent(input$discard_tpt, {
+      hsms_update_form(session, "pairwise", ctx$proj()$settings$pairwise)
+      shiny::updateNumericInput(session, "threads", value = ctx$proj()$settings$app$threads)
+    })
     shiny::observeEvent(input$discard_flt, hsms_update_form(session, "filter", ctx$proj()$settings$filter))
 
+    # Memory estimate: recomputed whenever the marker set or the diagnostics
+    # option changes (thread count does not affect memory). Available memory
+    # is re-read every 15 s while this page is open.
     est <- shiny::reactive({ s <- sel(); if (is.null(s)) return(NULL)
-      hsms_pairwise_memory_estimate(length(s$markers), isTRUE(input$pairwise__return_diagnostics)) })
+      shiny::invalidateLater(15000)
+      hsms_pairwise_memory_estimate(length(s$markers), isTRUE(input$pairwise__return_diagnostics), length(s$offspring)) })
+    mem_warn <- shiny::reactive({ e <- est(); if (is.null(e)) return(NULL)
+      hsms_pairwise_memory_warning(e, ctx$defaults$app$memory_warning_gb) })
     too_big <- shiny::reactive({ e <- est(); if (is.null(e)) return(FALSE)
-      e$n_markers > ctx$defaults$app$pairwise_marker_warning || e$peak_bytes_estimate > ctx$defaults$app$memory_warning_gb * 1024^3 })
+      e$n_markers > ctx$defaults$app$pairwise_marker_warning || isTRUE(mem_warn()$warn) })
     output$prerun <- shiny::renderUI({
       s <- sel(); e <- est(); if (is.null(s)) return(NULL)
       p <- ctx$proj()
-      shiny::tagList(hsms_kv(`Family` = p$family, `Offspring` = length(s$offspring), `Informative markers` = e$n_markers,
-                             `Unique pairs` = format(e$n_pairs, big.mark = ","),
-                             `Output size (estimate)` = hsms_fmt_bytes(e$output_bytes),
-                             `Peak memory (estimate)` = hsms_fmt_bytes(e$peak_bytes_estimate),
-                             `Worker threads` = p$settings$app$threads),
-                     shiny::p(class = "small text-muted", "Memory figures are estimates from the documented output structure, not measurements. Threads are set in Settings."))
+      hsms_kv(`Family` = p$family, `Offspring` = length(s$offspring), `Informative markers` = e$n_markers,
+              `Unique pairs` = format(e$n_pairs, big.mark = ","))
+    })
+    output$memory <- shiny::renderUI({
+      e <- est(); if (is.null(e)) return(NULL)
+      w <- mem_warn()
+      avail <- if (is.finite(e$available_bytes)) hsms_fmt_bytes(e$available_bytes) else "unknown"
+      shiny::div(class = "hsms-mem",
+        shiny::tags$h6("Memory estimate", hsms_help(paste(
+          "Calibrated from measured peak memory of real runs (R 4.3, Linux) and rounded up, so slightly pessimistic.",
+          "Memory grows with the square of the number of markers: doubling the markers needs about four times the memory.",
+          "The filter step reloads the full two-point result and needs more memory than the two-point run itself.",
+          "The app session also keeps the result in memory while you view it."), "Memory estimate")),
+        hsms_kv(`Two-point worker (peak)` = hsms_fmt_bytes(e$worker_peak_bytes),
+                `Filter step (peak)` = hsms_fmt_bytes(e$filter_peak_bytes),
+                `This app while showing the result` = hsms_fmt_bytes(e$app_bytes),
+                `Saved result file` = hsms_fmt_bytes(e$file_bytes),
+                `Needed at most (worker + app)` = shiny::strong(hsms_fmt_bytes(w$need_bytes)),
+                `Available on this computer now` = avail),
+        shiny::p(class = "small text-muted", "Thread count does not change these figures. Worker figures include about 380 MB for starting R with HalfSibMap."))
     })
     output$resource_confirm <- shiny::renderUI({
       if (!too_big()) return(NULL)
-      e <- est()
-      shiny::tagList(hsms_notice(type = "warning", sprintf("Large analysis: %s markers, estimated peak memory %s. Consider excluding markers in Quality review; markers are never subsampled automatically.",
-                                                           format(e$n_markers, big.mark = ","), hsms_fmt_bytes(e$peak_bytes_estimate))),
+      e <- est(); w <- mem_warn()
+      why <- c(
+        if (e$n_markers > ctx$defaults$app$pairwise_marker_warning)
+          sprintf("%s markers (above the configured %s-marker warning level)", format(e$n_markers, big.mark = ","),
+                  format(ctx$defaults$app$pairwise_marker_warning, big.mark = ",")),
+        if (isTRUE(w$over_avail)) sprintf("an estimated %s is needed, more than 80%% of the %s currently available",
+                                          hsms_fmt_bytes(w$need_bytes), hsms_fmt_bytes(e$available_bytes)),
+        if (isTRUE(w$over_cap)) sprintf("an estimated %s is needed, above the configured %s GB limit",
+                                        hsms_fmt_bytes(w$need_bytes), ctx$defaults$app$memory_warning_gb))
+      shiny::tagList(hsms_notice(type = "warning", shiny::strong("Large analysis: "), paste(why, collapse = "; "), ". ",
+                                 "Consider excluding markers in Quality review or analysing one chromosome at a time; markers are never subsampled automatically."),
                      shiny::checkboxInput(ns("confirm_big"), "I understand the resource cost; run anyway", FALSE))
     })
 
@@ -100,9 +159,11 @@ mod_pairwise_server <- function(id, ctx) {
       p <- ctx$proj(); shiny::req(p)
       msg <- hsms_prereq_message(p, "tpt_raw"); if (!is.null(msg)) { ctx$notify(msg, "warning"); return() }
       if (too_big() && !isTRUE(input$confirm_big)) { ctx$notify("Confirm the resource warning first.", "warning"); return() }
+      if (!threads_ok()) { ctx$notify(sprintf("Worker threads must be a whole number from 1 to %d.", allowance), "error"); return() }
       p2 <- tryCatch(hsms_apply_settings(p, "pairwise", tpt_draft()), error = function(e) e)
       if (inherits(p2, "error")) { ctx$notify(conditionMessage(p2), "error"); return() }
-      ctx$set_proj(p2); ctx$log("settings_applied", list(stage = "pairwise"))
+      p2$settings$app$threads <- threads_draft()
+      ctx$set_proj(p2); ctx$log("settings_applied", list(stage = "pairwise", threads = threads_draft()))
       ctx$launch("tpt_raw", label = "Two-point analysis")
     })
 
